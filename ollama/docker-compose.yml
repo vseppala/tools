@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  ollama:
+    volumes:
+      - ./data/ollama:/root/.ollama
+    container_name: ollama
+    pull_policy: always
+    tty: true
+    restart: unless-stopped
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h
+      - OLLAMA_MAX_LOADED_MODELS=2
+    networks:
+      - ollama-docker
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+networks:
+  ollama-docker:
+    external: false

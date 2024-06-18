@@ -1,0 +1,120 @@
+#!/bin/bash
+#================================================================
+# HEADER
+#================================================================
+#%
+#% SYNOPSIS
+#+    ${SCRIPT_NAME} [-v] COMMAND ...
+#%
+#% DESCRIPTION
+#%    VSE Development tools
+#%
+#% COMMANDS
+#%    -v, --verbose                 Print more logs.
+#%
+#% COMMANDS
+#%    (empty)                       Show help message.
+#%    help                          Show help message.
+#%
+#% EXAMPLES
+#%    ${SCRIPT_NAME}
+#%    ${SCRIPT_NAME} help
+#%
+#================================================================
+# END_OF_HEADER
+#================================================================
+
+# Params
+# -----------------------------------------------------------------------------
+COMMAND=$1
+
+# Return codes
+# -----------------------------------------------------------------------------
+ERROR=1
+SUCCESS=0
+
+# Colors
+# -----------------------------------------------------------------------------
+COLOR_OFF='\033[0m'       # Text Reset
+RED='\033[0;31m'          # Red / ERROR
+GREEN='\033[0;32m'        # Green / OK
+YELLOW='\033[0;33m'       # Yellow / WARNING
+BLUE='\033[0;34m'         # Blue / VERBOSE
+WHITE='\033[0;37m'        # White
+
+# Helpers
+# -----------------------------------------------------------------------------
+SCRIPT_HEADSIZE=$(head -200 ${0} |grep -n "^# END_OF_HEADER" | cut -f1 -d:)
+SCRIPT_NAME="$(basename ${0})"
+SCRIPT_FOLDER="$(dirname ${0})"
+ON=1
+OFF=0
+TRUE="TRUE"
+FALSE="FALSE"
+VERBOSE="$FALSE"
+
+# Print usage message
+# -----------------------------------------------------------------------------
+usage() {
+  printf "Usage: ";
+  head -${SCRIPT_HEADSIZE:-99} ${0} | grep -e "^#+" | sed -e "s/^#+[ ]*//g" -e "s/\${SCRIPT_NAME}/${SCRIPT_NAME}/g";
+}
+
+# Print full usage message
+# -----------------------------------------------------------------------------
+usagefull() {
+  head -${SCRIPT_HEADSIZE:-99} ${0} | grep -e "^#[%+-]" | sed -e "s/^#[%+-]//g" -e "s/\${SCRIPT_NAME}/${SCRIPT_NAME}/g";
+}
+
+# Print message
+# -----------------------------------------------------------------------------
+print_message() {
+  echo -e $1;
+}
+
+# Handle arguments
+# -----------------------------------------------------------------------------
+handle_argument() {
+  ARGUMENTS="$ARGUMENTS $@";
+}
+
+# Check input arguments
+# -----------------------------------------------------------------------------
+check_arguments() {
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      -v|--verbose) VERBOSE="$TRUE"; shift 1;;
+      *) handle_argument "$1"; shift 1;;
+    esac
+  done
+
+  return $?
+}
+
+# Starting point
+# -----------------------------------------------------------------------------
+main() {
+  check_arguments ${@:1}
+
+  if [ "$VERBOSE" == "$TRUE" ]; then
+    print_message "${BLUE}[VERBOSE] FULL INPUT: $@${COLOR_OFF}";
+    print_message "${BLUE}[VERBOSE] COMMAND: $1${COLOR_OFF}";
+    print_message "${BLUE}[VERBOSE] COMMAND LENGTH: $#${COLOR_OFF}";
+    print_message "${BLUE}[VERBOSE] ARGUMENTS: $ARGUMENTS${COLOR_OFF}";
+  fi
+
+  case $COMMAND in
+    help)
+      usagefull;
+    ;;
+    *)
+      usage;
+    ;;
+  esac
+
+  exit $?
+}
+
+main $@
+
+
