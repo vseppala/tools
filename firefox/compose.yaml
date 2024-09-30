@@ -1,0 +1,35 @@
+---
+x-firefox: &service-firefox
+  image: lscr.io/linuxserver/firefox:latest
+  container_name: firefox
+  security_opt:
+    - seccomp:unconfined
+  environment:
+    - PUID=1000
+    - PGID=1000
+    - TZ=Europe/Helsinki
+  volumes:
+    - ./.data/config:/config
+  ports:
+    - 3035:3000
+    - 3036:3001
+  shm_size: "1gb"
+  restart: unless-stopped
+
+services:
+  firefox:
+    profiles:
+      - gpu-none
+    <<: *service-firefox
+
+  firefox-nvidia:
+    profiles:
+      - gpu-nvidia
+    <<: *service-firefox
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ compute,video,graphics,utility ]
