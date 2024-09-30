@@ -1,0 +1,103 @@
+networks:
+  workflows-network:
+  ollama-network:
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
+    restart: unless-stopped
+    networks:
+      - workflows-network
+    environment:
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
+      - POSTGRES_DB
+    volumes:
+      - ./.data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -h localhost -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n
+    restart: unless-stopped
+    networks:
+      - workflows-network
+    environment:
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_USER=${POSTGRES_USER}
+      - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
+      - N8N_DIAGNOSTICS_ENABLED=false
+      - N8N_PERSONALIZATION_ENABLED=false
+      - N8N_ENCRYPTION_KEY
+      - N8N_USER_MANAGEMENT_JWT_SECRET
+    ports:
+      - 5678:5678
+    volumes:
+      - ./.data/n8n:/home/node/.n8n
+      - ./.data/n8n/backup:/backup
+      - ./.data/shared:/data/shared
+    depends_on:
+      postgres:
+        condition: service_healthy
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    links:
+      - postgres
+
+  qdrant:
+    image: qdrant/qdrant
+    container_name: qdrant
+    restart: unless-stopped
+    networks:
+      - workflows-network
+    ports:
+      - 6333:6333
+    volumes:
+      - ./.data/qdrant:/qdrant/storage
+
+  ollama:
+    profiles:
+      - ollama-container
+    image: ollama/ollama:latest
+    container_name: ollama
+    restart: unless-stopped
+    pull_policy: always
+    networks:
+      - ollama-network
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h
+      - OLLAMA_MAX_LOADED_MODELS=2
+    volumes:
+      - ./.data/ollama:/root/.ollama
+    tty: true
+    ports:
+      - "11434:11434"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
+
+  ollama-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: ollama-webui
+    restart: unless-stopped
+    networks:
+      - ollama-network
+    environment:
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    ports:
+      - "8020:8080"
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    volumes:
+      - ./.data/open-webui:/app/backend/data
